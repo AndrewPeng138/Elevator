@@ -10,7 +10,7 @@ public class Elevator {
     private int currentLoad;
     private double currentWeight;
     private final double maxWeight;
-    private Map<Integer, Integer> passengerDestinations; // passengerNum -> floor
+    private Map<Integer, Integer> passengerDestinations;
     private TreeSet<Integer> upStops;
     private TreeSet<Integer> downStops;
     
@@ -66,13 +66,8 @@ public class Elevator {
             return;
         }
         
-        // Organize all destinations into up/down stops
         organizeStops();
-        
-        // Determine initial direction based on closest stop
         determineInitialDirection();
-        
-        // Start moving
         processStops();
     }
     
@@ -80,7 +75,6 @@ public class Elevator {
         upStops.clear();
         downStops.clear();
         
-        // Get first passenger's floor to determine initial direction
         Integer firstPassengerFloor = passengerDestinations.get(1);
         Direction initialDir = Direction.IDLE;
         
@@ -93,12 +87,10 @@ public class Elevator {
         }
         
         if (initialDir == Direction.UP) {
-            // Going UP: all floors are considered "on the way"
             for (int floor : passengerDestinations.values()) {
                 upStops.add(floor);
             }
         } else if (initialDir == Direction.DOWN) {
-            // Going DOWN: all floors are considered "on the way"
             for (int floor : passengerDestinations.values()) {
                 downStops.add(floor);
             }
@@ -114,7 +106,6 @@ public class Elevator {
             return;
         }
         
-        // Direction is already set by organizeStops based on first passenger
         if (!upStops.isEmpty()) {
             direction = Direction.UP;
         } else if (!downStops.isEmpty()) {
@@ -126,10 +117,8 @@ public class Elevator {
         state = State.MOVING;
         
         if (direction == Direction.UP) {
-            // Process all stops going UP (sorted automatically by TreeSet)
             processUpStops();
         } else if (direction == Direction.DOWN) {
-            // Process all stops going DOWN (sorted automatically by TreeSet)
             processDownStops();
         }
         
@@ -145,11 +134,7 @@ public class Elevator {
         while (!downStops.isEmpty()) {
             int nextFloor = downStops.first();
             downStops.remove(nextFloor);
-            
-            // Move to floor
             moveToFloor(nextFloor, Direction.DOWN);
-            
-            // Stop and let passengers out
             stopAndUnload(nextFloor);
         }
     }
@@ -161,11 +146,7 @@ public class Elevator {
         while (!upStops.isEmpty()) {
             int nextFloor = upStops.first();
             upStops.remove(nextFloor);
-            
-            // Move to floor
             moveToFloor(nextFloor, Direction.UP);
-            
-            // Stop and let passengers out
             stopAndUnload(nextFloor);
         }
     }
@@ -187,7 +168,6 @@ public class Elevator {
         System.out.println("\n*** ARRIVED at floor " + floor + " ***");
         openDoors();
         
-        // Find which passengers exit here
         List<Integer> exitingPassengers = new ArrayList<>();
         for (Map.Entry<Integer, Integer> entry : passengerDestinations.entrySet()) {
             if (entry.getValue() == floor) {
@@ -198,7 +178,7 @@ public class Elevator {
         if (!exitingPassengers.isEmpty()) {
             Collections.sort(exitingPassengers);
             for (int passengerNum : exitingPassengers) {
-                System.out.println("  Person " + passengerNum + " exits");
+                System.out.println("  -> Person " + passengerNum + " exits");
                 passengerDestinations.remove(passengerNum);
                 currentLoad--;
             }
@@ -295,7 +275,42 @@ public class Elevator {
         Scanner scanner = new Scanner(System.in);
         System.out.println("=== Elevator Simulation ===\n");
         
-        Elevator elevator = new Elevator(1, 10, 8, 2000.0);
+        System.out.println("--- Building Configuration ---");
+        System.out.print("Enter number of floors in the building: ");
+        int numFloors = scanner.nextInt();
+        
+        if (numFloors <= 1) {
+            System.out.println("Invalid number of floors. Must be greater than 1.");
+            scanner.close();
+            return;
+        }
+        
+        System.out.println("\n--- Elevator Configuration ---");
+        System.out.print("Enter maximum occupancy (number of people): ");
+        int maxOccupancy = scanner.nextInt();
+        
+        if (maxOccupancy <= 0) {
+            System.out.println("Invalid occupancy. Must be greater than 0.");
+            scanner.close();
+            return;
+        }
+        
+        System.out.print("Enter maximum weight capacity (in lbs): ");
+        double maxWeight = scanner.nextDouble();
+        
+        if (maxWeight <= 0) {
+            System.out.println("Invalid weight capacity. Must be greater than 0.");
+            scanner.close();
+            return;
+        }
+        
+        System.out.println("\nBuilding & Elevator configured:");
+        System.out.println("  Floors: 1 to " + numFloors);
+        System.out.println("  Max occupancy: " + maxOccupancy + " people");
+        System.out.println("  Max weight: " + maxWeight + " lbs");
+        System.out.println();
+        
+        Elevator elevator = new Elevator(1, numFloors, maxOccupancy, maxWeight);
         System.out.println("Elevator starting at floor " + elevator.getCurrentFloor() + "\n");
         
         System.out.print("How many people want to enter the elevator? ");
@@ -330,11 +345,11 @@ public class Elevator {
             
             totalWeight += weight;
             
-            System.out.print("Enter destination floor (1-10): ");
+            System.out.print("Enter destination floor (1-" + numFloors + "): ");
             int floor = scanner.nextInt();
             
-            if (floor < 1 || floor > 10) {
-                System.out.println("Invalid floor. Please enter a floor between 1 and 10.");
+            if (floor < 1 || floor > numFloors) {
+                System.out.println("Invalid floor. Please enter a floor between 1 and " + numFloors + ".");
                 i--;
                 totalWeight -= weight;
                 continue;
@@ -348,7 +363,7 @@ public class Elevator {
         System.out.println("Total weight: " + String.format("%.1f", totalWeight) + " lbs");
         System.out.println("Destinations:");
         for (Map.Entry<Integer, Integer> entry : passengerFloors.entrySet()) {
-            System.out.println("  Person " + entry.getKey() + " → Floor " + entry.getValue());
+            System.out.println("  Person " + entry.getKey() + " -> Floor " + entry.getValue());
         }
         
         elevator.addPassengers(numPeople, totalWeight);
@@ -356,7 +371,6 @@ public class Elevator {
         if (elevator.getCurrentLoad() > 0) {
             System.out.println("\n" + "=".repeat(40));
             
-            // Add all passenger destinations
             for (Map.Entry<Integer, Integer> entry : passengerFloors.entrySet()) {
                 elevator.addPassengerWithDestination(entry.getKey(), entry.getValue());
             }
