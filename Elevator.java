@@ -11,6 +11,7 @@ public class Elevator {
     private double currentWeight;
     private final double maxWeight;
     private Map<Integer, Integer> passengerDestinations;
+    private Map<Integer, Double> passengerWeights;
     private TreeSet<Integer> upStops;
     private TreeSet<Integer> downStops;
     
@@ -37,6 +38,7 @@ public class Elevator {
         this.currentLoad = 0;
         this.currentWeight = 0.0;
         this.passengerDestinations = new HashMap<>();
+        this.passengerWeights = new HashMap<>();
         this.upStops = new TreeSet<>();
         this.downStops = new TreeSet<>(Collections.reverseOrder());
     }
@@ -45,7 +47,7 @@ public class Elevator {
         this(1, 10, 8, 2000.0);
     }
     
-    public void addPassengerWithDestination(int passengerNum, int destinationFloor) {
+    public void addPassengerWithDestination(int passengerNum, int destinationFloor, double weight) {
         if (destinationFloor < minFloor || destinationFloor > maxFloor) {
             System.out.println("Invalid floor: " + destinationFloor);
             return;
@@ -57,7 +59,8 @@ public class Elevator {
         }
         
         passengerDestinations.put(passengerNum, destinationFloor);
-        System.out.println("Passenger " + passengerNum + " wants floor " + destinationFloor);
+        passengerWeights.put(passengerNum, weight);
+        System.out.println("Passenger " + passengerNum + " (" + String.format("%.1f", weight) + " lbs) wants floor " + destinationFloor);
     }
     
     public void startJourney() {
@@ -178,10 +181,18 @@ public class Elevator {
         if (!exitingPassengers.isEmpty()) {
             Collections.sort(exitingPassengers);
             for (int passengerNum : exitingPassengers) {
-                System.out.println("  -> Person " + passengerNum + " exits");
+                double weight = passengerWeights.get(passengerNum);
+                System.out.println("  -> Person " + passengerNum + " exits (" + String.format("%.1f", weight) + " lbs)");
+                
+                // Remove passenger and their weight
                 passengerDestinations.remove(passengerNum);
+                passengerWeights.remove(passengerNum);
                 currentLoad--;
+                currentWeight -= weight;
             }
+            
+            System.out.println("  Current load: " + currentLoad + "/" + capacity + " people");
+            System.out.println("  Current weight: " + String.format("%.1f", currentWeight) + "/" + String.format("%.1f", maxWeight) + " lbs");
         }
         
         simulateDelay(3000);
@@ -224,6 +235,7 @@ public class Elevator {
         upStops.clear();
         downStops.clear();
         passengerDestinations.clear();
+        passengerWeights.clear();
         state = State.STOPPED;
         direction = Direction.IDLE;
         System.out.println("EMERGENCY STOP activated at floor " + currentFloor);
@@ -330,6 +342,7 @@ public class Elevator {
         
         double totalWeight = 0.0;
         Map<Integer, Integer> passengerFloors = new HashMap<>();
+        Map<Integer, Double> passengerWeightMap = new HashMap<>();
         
         for (int i = 1; i <= numPeople; i++) {
             System.out.println("\n--- Person " + i + " ---");
@@ -344,6 +357,7 @@ public class Elevator {
             }
             
             totalWeight += weight;
+            passengerWeightMap.put(i, weight);
             
             System.out.print("Enter destination floor (1-" + numFloors + "): ");
             int floor = scanner.nextInt();
@@ -352,6 +366,7 @@ public class Elevator {
                 System.out.println("Invalid floor. Please enter a floor between 1 and " + numFloors + ".");
                 i--;
                 totalWeight -= weight;
+                passengerWeightMap.remove(i);
                 continue;
             }
             
@@ -363,7 +378,9 @@ public class Elevator {
         System.out.println("Total weight: " + String.format("%.1f", totalWeight) + " lbs");
         System.out.println("Destinations:");
         for (Map.Entry<Integer, Integer> entry : passengerFloors.entrySet()) {
-            System.out.println("  Person " + entry.getKey() + " -> Floor " + entry.getValue());
+            int personNum = entry.getKey();
+            double weight = passengerWeightMap.get(personNum);
+            System.out.println("  Person " + personNum + " (" + String.format("%.1f", weight) + " lbs) -> Floor " + entry.getValue());
         }
         
         elevator.addPassengers(numPeople, totalWeight);
@@ -372,7 +389,9 @@ public class Elevator {
             System.out.println("\n" + "=".repeat(40));
             
             for (Map.Entry<Integer, Integer> entry : passengerFloors.entrySet()) {
-                elevator.addPassengerWithDestination(entry.getKey(), entry.getValue());
+                int personNum = entry.getKey();
+                double weight = passengerWeightMap.get(personNum);
+                elevator.addPassengerWithDestination(personNum, entry.getValue(), weight);
             }
             
             System.out.println("\n" + "=".repeat(40));
